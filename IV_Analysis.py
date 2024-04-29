@@ -6,6 +6,7 @@ from keithleyComms  import Keithley2450
 import pyqtgraph as pg
 from IVAnalysis import deriv_Vbd, FwdAnalysis
 import numpy as np
+from scipy.optimize import curve_fit
 
 class IVAnalysis(QMainWindow,Keithley2450):
     def __init__(self,x,y, *args, **kwargs):
@@ -22,11 +23,11 @@ class IVAnalysis(QMainWindow,Keithley2450):
 
         
         self.graphWidget = pg.PlotWidget()
-        my_font = QFont("Helvetica", 16)
+        self.my_font = QFont("Helvetica", 16)
         self.graphWidget.setLabel('bottom', "Voltage [V]")
         self.graphWidget.setLabel('left', "Current [A]")
-        self.graphWidget.getAxis("bottom").label.setFont(my_font)
-        self.graphWidget.getAxis("left").label.setFont(my_font)
+        self.graphWidget.getAxis("bottom").label.setFont(self.my_font)
+        self.graphWidget.getAxis("left").label.setFont(self.my_font)
         self.graphWidget.setBackground('#000000')
         pen = pg.mkPen(color=(105, 255, 255),width=5)
         
@@ -58,6 +59,40 @@ class IVAnalysis(QMainWindow,Keithley2450):
         self.Comms.setText("Breakdown: {}[V], Breakdown error: {}[V]".format(round(self.breakdown[0],4),round(self.breakdown_error[0],4)))
         self.update_plot_Reverse()
 
+    def line(self,x,m,c):
+        return m*x+c
+    
+    def FindMaxResidual(self):
+        Vs = float(self.Vstart.text())
+        Ve = float(self.Vend.text())
+        print(Vs,Ve)
+        volts = np.array(self.Volts)
+        curr = np.array(self.Current)
+        lowerCutSamples = np.argwhere(volts>Vs)[0][0]
+        print(np.argwhere(volts>Vs))
+        try:
+            UpperCutSamples = np.argwhere(volts>Ve)[0][0]
+        except IndexError:
+            self.Comms.setText("Voltage End value is larger than dataset please adjust")
+        print(np.argwhere(volts>Ve))
+        self.xData, yData =volts[lowerCutSamples:UpperCutSamples],curr[lowerCutSamples:UpperCutSamples] 
+        popt,pcov = curve_fit(self.line,self.xData,yData,p0=(1e-06,0))
+
+        self.residuals = yData - self.line(self.xData,*popt)
+
+        return self.residuals[-1] # return last residual 
+
+    def ResidualAnalysis(self):
+        self.MaxResidual = self.FindMaxResidual()*1e09 #scale to nA
+        if self.MaxResidual<float(self.ResidualThreshDiag.text()):
+            self.Comms.setText("Max Residual is below threshold. IV looks Good!")
+        else:
+            self.Comms.setText("Max Residual is above threshold! potentially Dead SiPM")
+        self.update_plot_residual()
+
+
+
+
     def FwdAnalysis(self):
         self.Resistance, self.perr, self.DiodeVoltage, self.popt = FwdAnalysis(self.Volts,self.Current,float(self.FwdThreshDialog.text()))
         self.Comms.setText("Resistance: {} [Ohm], Resistance Error {:#.4g} [Ohm], I intersect Error {:#.4g} [A] , Diode Voltage: {}[V]".format(round(self.Resistance,4),1/self.perr[0],self.perr[1],round(self.DiodeVoltage,4)))
@@ -82,7 +117,21 @@ class IVAnalysis(QMainWindow,Keithley2450):
         # self.data.setData(self.voltage, self.dydx)  # Update the data.
         self.graphWidget.setLabel('left', "Current [A]")
         self.graphWidget.setLimits(xMin=(min(self.voltage)), xMax=max(self.voltage), yMin=min(self.dydx), yMax=max(self.dydx))
-     
+    
+
+    def update_plot_residual(self):
+        self.residuals =  self.residuals*1e09
+        print(self.residuals)
+        # self.graphWidget.clear()
+        self.graphWidget.setLimits(xMin=(min(self.xData)), xMax=max(self.xData), yMin=min(self.residuals), yMax=max(self.residuals))
+        self.data.setData(self.xData, self.residuals)  # Update the data.
+        self.graphWidget.plot(x=[min(self.xData),max(self.xData)],y=[float(self.ResidualThreshDiag.text()),float(self.ResidualThreshDiag.text())],pen=pg.mkPen(color=(255, 0, 0),width=5),fillLevel=-0.3, brush=(105,105,105,50),name = "Residual Threshold")
+        self.graphWidget.setLabel('bottom', "Voltage [V]")
+        self.graphWidget.setLabel('left', "Current [nA]")
+        self.graphWidget.getAxis("bottom").label.setFont(self.my_font)
+        self.graphWidget.getAxis("left").label.setFont(self.my_font)
+
+
     def initToolBar(self):
         '''
         Initialise Toolbar with all control functions
@@ -91,9 +140,11 @@ class IVAnalysis(QMainWindow,Keithley2450):
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, analysis_toolbar)
         self.dAnalysis = QPushButton("Calculate Breakdown (derivative)")
         self.FwdAnalysisButton = QPushButton("Analyse Forward Bias IV")
+        self.resAnalysis = QPushButton("Residual Analysis")
 
         self.dAnalysis.clicked.connect(self.derivAnalysis)
         self.FwdAnalysisButton.clicked.connect(self.FwdAnalysis)
+        self.resAnalysis.clicked.connect(self.ResidualAnalysis)
         
         #labels
         self.VoltageStart = QLabel("Voltage Start [V]:")
@@ -105,6 +156,8 @@ class IVAnalysis(QMainWindow,Keithley2450):
         self.f_thresh = QLineEdit("3")
         self.FwdThreshlabel = QLabel("Forward Threshold [A]: ")
         self.FwdThreshDialog = QLineEdit("0.200") #[A]
+        self.ResidualThreshlabel = QLabel("ResidualThreshold [nV]: ")
+        self.ResidualThreshDiag  = QLineEdit("11") #[nA]
 
 
         self.f_thresh.setStatusTip("Set a multiple of the baseline for locating breakdown")
@@ -112,7 +165,10 @@ class IVAnalysis(QMainWindow,Keithley2450):
         self.Vstart.setStatusTip("Truncate Start Voltage")
         self.dAnalysis.setStatusTip("Determine Breakdown from dln(I)/dV")
         self.FwdThreshDialog.setStatusTip("Set the current threshold, above which the linear fit is applied")
-        self.FwdAnalysisButton.setStatusTip("Analyse Forward Bias IV Curve. This will Calcualte Resistance and Diode Voltage of SiPM")
+        self.FwdAnalysisButton.setStatusTip("Analyse Forward Bias IV Curve. This will Calculate Resistance and Diode Voltage of SiPM")
+        self.resAnalysis.setStatusTip("Conduct residual analysis on IV Curve")
+        self.ResidualThreshDiag.setStatusTip("Select the Residual Threshold")
+        
         analysis_toolbar.addWidget(self.VoltageStart)
         analysis_toolbar.addWidget(self.Vstart)
         analysis_toolbar.addWidget(self.VoltageEnd)
@@ -123,4 +179,7 @@ class IVAnalysis(QMainWindow,Keithley2450):
         analysis_toolbar.addWidget(self.FwdThreshlabel)
         analysis_toolbar.addWidget(self.FwdThreshDialog)
         analysis_toolbar.addWidget(self.FwdAnalysisButton)
+        analysis_toolbar.addWidget(self.ResidualThreshlabel)
+        analysis_toolbar.addWidget(self.ResidualThreshDiag)
+        analysis_toolbar.addWidget(self.resAnalysis)
     

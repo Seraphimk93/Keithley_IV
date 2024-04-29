@@ -8,7 +8,7 @@ main upgrades:
 
 Seraphim Koulosousas 2023, seraphim.koulosousas.2021@live.rhul.ac.uk
 '''
-from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication, QWidget, QPushButton, QGridLayout,QLineEdit, QLabel, QToolBar,QStatusBar
+from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication, QWidget, QPushButton, QGridLayout,QLineEdit, QLabel, QToolBar,QStatusBar,QComboBox
 from PyQt6.QtCore import QThread,  Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 import pyqtgraph as pg
@@ -121,14 +121,18 @@ class MainWindow(QMainWindow,Keithley2450):
         Keithley2450.__init__(self)
 
         pg.setConfigOptions(antialias=True)
-        self.setWindowTitle("Keithley 1 IV")
+        self.setWindowTitle("Keithley IV")
 
         #Initialise arrays for storing Voltage and current
         self.Volts = []
         self.Current = []
         self.clim = 8e-05 # current limit [Amps]
-        
-
+        self.Kdict = {"Keithley 1": "Address 1","Keithley 2":"Address 2" }
+        self.Kcombobox = QComboBox()
+        self.Kcombobox.addItem('Keithley 1')
+        self.Kcombobox.addItem('Keithley 2')
+        # Kcombobox.addItem('Three')
+        # Kcombobox.addItem('Four')
         
         self.initToolBar()#Initialise toolbar
         self.setStatusBar(QStatusBar(self))
@@ -192,10 +196,10 @@ class MainWindow(QMainWindow,Keithley2450):
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, keithley_toolbar)
 
         #keithley 1 controls 
-        self.keithley_connect = QPushButton("Connect Keithley 1")
-        self.keithley_Disconnect = QPushButton("Disconnect Keithley 1")
-        self.keithley_Enable = QPushButton("Enable Keithley 1")
-        self.keithley_Disable = QPushButton("Disable Keithley 1")
+        self.keithley_connect = QPushButton("Connect Keithley")
+        self.keithley_Disconnect = QPushButton("Disconnect Keithley")
+        self.keithley_Enable = QPushButton("Enable Keithley")
+        self.keithley_Disable = QPushButton("Disable Keithley")
         # self.keithley_SetCurrentLimit = QPushButton("Set Current limit")
         self.keithley_takeIV = QPushButton("Take IV")
         self.RampDown = QPushButton("RampDown")
@@ -237,10 +241,10 @@ class MainWindow(QMainWindow,Keithley2450):
 
         self.ToggleInputs(False) #keep buttons shaded out till keithley is connected
 
-        self.keithley_connect.setStatusTip("Connect to Keithley 1")
-        self.keithley_Disconnect.setStatusTip("Disconnect from Keithley 1")
-        self.keithley_Enable.setStatusTip("Enable Keithley 1 Output")
-        self.keithley_Disable.setStatusTip("Disable Keithley 1 Output")
+        self.keithley_connect.setStatusTip("Connect to Keithley")
+        self.keithley_Disconnect.setStatusTip("Disconnect from Keithley")
+        self.keithley_Enable.setStatusTip("Enable Keithley Output")
+        self.keithley_Disable.setStatusTip("Disable KeithleyOutput")
         self.k1current.setStatusTip("Set Keithley Current Limit, usually 8e-05 [A] for Reverse bias")
         # self.keithley_SetCurrentLimit.setStatusTip("Set Keithley Current Limit, usually 8e-05 [A] for Reverse bias")
         self.keithley_takeIV.setStatusTip("Take I-V Curve")
@@ -255,9 +259,12 @@ class MainWindow(QMainWindow,Keithley2450):
         self.k1timeDelay.setStatusTip("Enter the the IV Curve Time Delay in milliseconds")
         self.GoToValueInput.setStatusTip("Enter a Voltage to Go To")
         self.AnalyseIV.setStatusTip("Analyse IV")
+        self.Kcombobox.setStatusTip("Select Keithley to connect to")
+        
     
         #Add Controsl and user inputs to toolbar
         keithley_toolbar.addWidget(self.Open)
+        keithley_toolbar.addWidget(self.Kcombobox)
         keithley_toolbar.addWidget(self.keithley_connect)
         keithley_toolbar.addWidget(self.keithley_Disconnect)
         keithley_toolbar.addWidget(self.keithley_Enable)
@@ -294,6 +301,8 @@ class MainWindow(QMainWindow,Keithley2450):
         self.TrackThread.start()
 
     def ConnectKeithley(self):
+        address = self.Kdict[self.Kcombobox.currentText()]
+        print(address)
         self.k1 = self.Connect('USB0::0x05E6::0x2450::04490665::INSTR')
         self.ToggleInputs(True)
         self.Comms.setText("Keithley is Connected")
