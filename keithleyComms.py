@@ -18,7 +18,7 @@ class Keithley2450():
         try:
             self.k = self.rm.open_resource(address)
             print(self.k.query('*IDN?'))
-            self.CurrentMeasureNPLC(0.1)
+            self.CurrentMeasureNPLC(1)
             self.ConnStatus=True
         except ValueError:
             print('[ERROR]: Cannot connect to Scope. Check Scope usb is connected and scope is turned On')

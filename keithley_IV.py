@@ -343,6 +343,7 @@ class MainWindow(QMainWindow):
         end = self.k1end.text()
         step = self.k1steps.text()
         timeDelay = self.k1timeDelay.text()
+        self.SetCurrentLimit(float(self.k1current.text()))
         self.thr = QThread()
         self.worker = TakeIV(start,end,step,timeDelay,self.k)
         self.worker.moveToThread(self.thr)
@@ -399,7 +400,7 @@ class MainWindow(QMainWindow):
         if len(self.k1current.text())==0:
             self.Comms.setText("Please Insert Current limit")
             return
-        self.k.SourceVoltage(self.GoToValueInput.text())
+        self.k.SourceVoltage(float(self.GoToValueInput.text()))
         I=self.k.MeasureCurrent()
         self.Volts.append(float(self.GoToValueInput.text()))
         self.Current.append(float(I))
