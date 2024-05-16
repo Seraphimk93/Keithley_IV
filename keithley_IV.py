@@ -319,7 +319,7 @@ class MainWindow(QMainWindow):
         self.ToggleInputs(True)
         self.Comms.setText("Keithley is Connected")
         self.SetCurrentLimit(self.clim)
-        print(self.k.test())
+        #print(self.k.test())
 
     def SetCurrentLimit(self,value):
         self.k.Source_Current_Limit(value)
@@ -402,11 +402,13 @@ class MainWindow(QMainWindow):
             return
         self.k.SourceVoltage(float(self.GoToValueInput.text()))
         I=self.k.MeasureCurrent()
-        self.Volts.append(float(self.GoToValueInput.text()))
-        self.Current.append(float(I))
-        self.data_line.plot(self.Volts, self.Current)
-        self.LiveVoltage.setText(str("Voltage [V]: %.2f" % round(float(self.GoToValueInput.text()), 2)))
-        self.LiveCurrent.setText(str("Current [A]: %.2f" % round(I, 2)))
+        self.update_plot([float(self.GoToValueInput.text()),float(I)])
+        #self.Volts.append(float(self.GoToValueInput.text()))
+        #self.Current.append(float(I))
+        #self.data_line.plot(self.Volts, self.Current)
+        
+        #self.LiveVoltage.setText(str("Voltage [V]: %.2f" % round(float(self.GoToValueInput.text()), 2)))
+        #self.LiveCurrent.setText(str("Current [A]: %.2f" % round(I, 2)))
         
     def LiveCurrentVoltage(self,data):
         V = float(data[0])
