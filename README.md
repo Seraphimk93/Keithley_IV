@@ -23,7 +23,7 @@ you will also need to install pyvisa
 
 # Linux Setup 
 
-if running on linux you will still need to install the NI visa drivers  -- though this is more of a pain on  
+if running on linux you will still need to install the NI visa drivers  -- though this is more of a pain on Linux
 
 you will also need to install pyvisa 
 
