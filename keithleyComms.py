@@ -4,7 +4,7 @@ class Keithley2450():
     def __init__(self,Resource=None):
         self.k=None
         if Resource==None:
-            self.rm = pyvisa.ResourceManager()
+            self.rm = pyvisa.ResourceManager('@py')
         else:
             self.k = Resource
             self.k.write(":SOUR:FUNC VOLT") # set as a voltage source
