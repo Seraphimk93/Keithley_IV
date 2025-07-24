@@ -31,3 +31,18 @@ if running on linux you will still need to install the NI visa drivers  -- thoug
 you will also need to install pyvisa 
 
 leave line 7 in `KeithleyComms.py` as is 
+
+# Starting GUI
+
+Linux:
+~~~console
+[foo@bar ~] python3 IV_Gui.py
+~~~
+
+Windows:
+~~~powershell
+PS C:\> python IV_Gui.py
+~~~
+
+
+
